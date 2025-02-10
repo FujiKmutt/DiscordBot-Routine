@@ -10,8 +10,8 @@
   "license": "ISC",
   "description": "",
   "dependencies": {
+    "better-sqlite3": "^11.8.1",
     "discord.js": "^14.17.3",
-    "dotenv": "^16.4.7",
-    "sqlite3": "^5.1.7"
+    "dotenv": "^16.4.7"
   }
 }

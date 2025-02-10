@@ -1,6 +1,10 @@
 require("dotenv").config();
 const { Client, GatewayIntentBits } = require("discord.js");
-const sqlite3 = require("sqlite3").verbose();
+const Database = require("better-sqlite3");
+
+// เชื่อมต่อฐานข้อมูล SQLite
+const db = new Database("./reminders.db");
+console.log("✅ Connected to SQLite database.");
 
 const client = new Client({
   intents: [
@@ -8,12 +12,6 @@ const client = new Client({
     GatewayIntentBits.GuildMessages,
     GatewayIntentBits.MessageContent,
   ],
-});
-
-// เชื่อมต่อฐานข้อมูล SQLite
-const db = new sqlite3.Database("./reminders.db", (err) => {
-  if (err) console.error("❌ Database error:", err);
-  else console.log("✅ Connected to SQLite database.");
 });
 
 // **ID ของผู้ใช้ที่ต้องการให้ Tag**
