@@ -54,33 +54,31 @@ const scrubReminder = {
 };
 
 // **สร้างตารางเตือนถ้ายังไม่มี**
-db.run(
+db.prepare(
   `CREATE TABLE IF NOT EXISTS reminders (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     time TEXT,
     message TEXT
   )`
-);
+).run();
 
 // **เพิ่มรายการเตือนอัตโนมัติถ้ายังไม่มี**
-defaultReminders.forEach((reminder) => {
-  db.get("SELECT * FROM reminders WHERE time = ?", [reminder.time], (err, row) => {
-    if (!row) {
-      db.run("INSERT INTO reminders (time, message) VALUES (?, ?)", [reminder.time, reminder.message]);
-      console.log(`📌 เพิ่มการเตือน: ${reminder.time} - ${reminder.message}`);
-    }
-  });
-});
+for (const reminder of defaultReminders) {
+  const exists = db.prepare("SELECT * FROM reminders WHERE time = ?").get(reminder.time);
+  if (!exists) {
+    db.prepare("INSERT INTO reminders (time, message) VALUES (?, ?)").run(reminder.time, reminder.message);
+    console.log(`📌 เพิ่มการเตือน: ${reminder.time} - ${reminder.message}`);
+  }
+}
 
 // **เพิ่มวันขัดผิวเฉพาะวันพุธ & อาทิตย์**
 const today = new Date().toLocaleString("en-US", { weekday: "long" });
 if (scrubDays.includes(today)) {
-  db.get("SELECT * FROM reminders WHERE time = ?", [scrubReminder.time], (err, row) => {
-    if (!row) {
-      db.run("INSERT INTO reminders (time, message) VALUES (?, ?)", [scrubReminder.time, scrubReminder.message]);
-      console.log(`📌 เพิ่มการเตือนวันขัดผิว: ${scrubReminder.time}`);
-    }
-  });
+  const exists = db.prepare("SELECT * FROM reminders WHERE time = ?").get(scrubReminder.time);
+  if (!exists) {
+    db.prepare("INSERT INTO reminders (time, message) VALUES (?, ?)").run(scrubReminder.time, scrubReminder.message);
+    console.log(`📌 เพิ่มการเตือนวันขัดผิว: ${scrubReminder.time}`);
+  }
 }
 
 // **ฟังก์ชันเช็คเวลาและเตือนทุก 1 นาที**
@@ -88,16 +86,15 @@ function checkReminder() {
   const now = new Date();
   const currentTime = `${now.getHours()}:${String(now.getMinutes()).padStart(2, "0")}`;
 
-  db.all("SELECT * FROM reminders WHERE time = ?", [currentTime], (err, rows) => {
-    if (rows.length > 0) {
-      const channel = client.channels.cache.get(process.env.CHANNEL_ID);
-      if (channel) {
-        rows.forEach((reminder) => {
-          channel.send(reminder.message);
-        });
-      }
+  const rows = db.prepare("SELECT * FROM reminders WHERE time = ?").all(currentTime);
+  if (rows.length > 0) {
+    const channel = client.channels.cache.get(process.env.CHANNEL_ID);
+    if (channel) {
+      rows.forEach((reminder) => {
+        channel.send(reminder.message);
+      });
     }
-  });
+  }
 }
 
 // **เริ่มเช็คเวลาเตือนทุก 1 นาที**
