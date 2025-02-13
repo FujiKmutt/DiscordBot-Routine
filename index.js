@@ -1,7 +1,7 @@
 require("dotenv").config();
 const { Client, GatewayIntentBits } = require("discord.js");
 const Database = require("better-sqlite3");
-const moment = require("moment-timezone"); // 📌 ใช้ moment-timezone เพื่อจัดการเวลาไทย
+const moment = require("moment-timezone"); // ✅ ใช้ moment-timezone เพื่อให้เวลาตรงกับไทย
 
 // ✅ เชื่อมต่อฐานข้อมูล SQLite
 const db = new Database("./reminders.db");
@@ -37,41 +37,6 @@ const defaultReminders = [
   { time: "22:00", message: `🌙 <@${USER_ID}> ได้เวลานอนแล้ว!` },
 ];
 
-// ✅ วันขัดผิว (พุธ & อาทิตย์)
-const scrubDays = ["Wednesday", "Sunday"];
-const scrubReminder = {
-  time: "19:00",
-  message: `📌 <@${USER_ID}> **วันนี้เป็นวันขัดผิว!**  
-✅ อาบน้ำ + ขัดผิวเบา ๆ ด้วยสครับ  
-✅ ล้างหน้า + ทาครีมตามปกติ`
-};
-
-// ✅ สร้างตารางเตือนถ้ายังไม่มี
-db.prepare(
-  `CREATE TABLE IF NOT EXISTS reminders (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    time TEXT,
-    message TEXT
-  )`
-).run();
-
-// ✅ เพิ่มรายการเตือนอัตโนมัติถ้ายังไม่มี
-for (const reminder of defaultReminders) {
-  const exists = db.prepare("SELECT * FROM reminders WHERE time = ?").get(reminder.time);
-  if (!exists) {
-    db.prepare("INSERT INTO reminders (time, message) VALUES (?, ?)").run(reminder.time, reminder.message);
-  }
-}
-
-// ✅ เพิ่มวันขัดผิวเฉพาะวันพุธ & อาทิตย์
-const today = moment().tz("Asia/Bangkok").format("dddd"); // 📌 ใช้เวลาไทย
-if (scrubDays.includes(today)) {
-  const exists = db.prepare("SELECT * FROM reminders WHERE time = ?").get(scrubReminder.time);
-  if (!exists) {
-    db.prepare("INSERT INTO reminders (time, message) VALUES (?, ?)").run(scrubReminder.time, scrubReminder.message);
-  }
-}
-
 // ✅ เมื่อบอทออนไลน์
 client.once("ready", async () => {
   console.log(`✅ บอท ${client.user.tag} ทำงานแล้ว!`);
@@ -90,27 +55,22 @@ client.once("ready", async () => {
     return;
   }
 
+  console.log(`✅ บอทสามารถส่งข้อความในช่อง: #${channel.name}`);
+
+  // ✅ ส่งข้อความทดสอบทันทีที่บอทออนไลน์
+  try {
+    await channel.send(`✅ บอทออนไลน์แล้ว และสามารถส่งข้อความได้ที่ช่องนี้! 🟢`);
+  } catch (err) {
+    console.error("❌ ERROR: ไม่สามารถส่งข้อความไปที่ช่อง ตรวจสอบ Permission!");
+  }
+
   // ✅ เริ่มเช็คเวลาเตือนทุก 1 นาที
   setInterval(checkReminder, 60000);
-
-  // ✅ เปลี่ยนสถานะบอททุก 5 วินาที เพื่อลดโหลด
-  cycleBotStatus();
 });
-
-// ✅ ฟังก์ชันเปลี่ยนสถานะบอท
-function cycleBotStatus() {
-  const statuses = ["online", "idle", "dnd"];
-  let index = 0;
-
-  setInterval(() => {
-    client.user.setStatus(statuses[index]);
-    index = (index + 1) % statuses.length; // วนซ้ำ
-  }, 5000); // 🔹 เปลี่ยนเป็น 5 วินาที
-}
 
 // ✅ ฟังก์ชันเช็คเวลาและเตือนทุก 1 นาที
 function checkReminder() {
-  const now = moment().tz("Asia/Bangkok"); // 📌 ใช้เวลาไทย
+  const now = moment().tz("Asia/Bangkok"); // ✅ ใช้เวลาไทย
   const currentTime = now.format("HH:mm");
 
   const rows = db.prepare("SELECT * FROM reminders WHERE time = ?").all(currentTime);
